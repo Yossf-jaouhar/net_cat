@@ -103,7 +103,7 @@ func (a *Info) Chat(con net.Conn) {
 		name := a.Clients[con]
 		n, err := con.Read(buffer)
 		if err != nil {
-			fmt.Println("Client disconnected:", name, err)
+			fmt.Println(name,"disconnected!!	")
 			return
 		}
 
