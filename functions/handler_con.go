@@ -25,8 +25,22 @@ func (a *Info) HandlerCon(con net.Conn) {
 		con.Close()
 	}()
 
-	buffer := make([]byte, 1024)
+	a.mut.Lock()
+	if len(a.Clients) > 1 {
+		_, err := con.Write([]byte("you can't ...."))
+		if err != nil {
+			fmt.Println("Error sending prompt:", err)
+			return
+		}
+		con.Close() 	
+		delete(a.Clients, con)
+		a.Disconnected(con, a.Clients[con])
+		
+		return
+	}
+	a.mut.Unlock()
 
+	buffer := make([]byte, 100)
 	_, err := con.Write([]byte("Enter your name: "))
 	if err != nil {
 		fmt.Println("Error sending prompt:", err)
@@ -41,15 +55,17 @@ func (a *Info) HandlerCon(con net.Conn) {
 	name := strings.TrimSpace(string(buffer[:n]))
 	help := false
 	ret := isValidName(name)
+
 	if ret == "" {
 		help = true
-
 		a.mut.Lock()
 		a.Clients[con] = name
 		a.mut.Unlock()
 	}
-	for !help {
 
+	count := 4
+
+	for !help && count > 0 {
 		_, err := con.Write([]byte(ret))
 		if err != nil {
 			fmt.Println("Error sending invalid name message:", err)
@@ -67,9 +83,17 @@ func (a *Info) HandlerCon(con net.Conn) {
 			help = true
 			a.mut.Lock()
 			a.Clients[con] = name
+			delete(a.Clients, con)
 			a.mut.Unlock()
 		}
+		count--
 
+	}
+
+	if count == 0 {
+		a.mut.Lock()
+		con.Close()
+		a.mut.Unlock()
 	}
 
 	a.Chat(con)
@@ -98,12 +122,12 @@ func (a *Info) Chat(con net.Conn) {
 	}
 	a.mut.Unlock()
 
-	buffer := make([]byte, 1024)
+	buffer := make([]byte, 100)
 	for {
 		name := a.Clients[con]
 		n, err := con.Read(buffer)
 		if err != nil {
-			fmt.Println(name,"disconnected!!	")
+			fmt.Println(name, "disconnected!!	")
 			return
 		}
 
@@ -125,8 +149,10 @@ func (a *Info) Chat(con net.Conn) {
 			}
 		}
 		a.mut.Unlock()
+
 	}
 }
+
 func (a *Info) Disconnected(con net.Conn, name string) {
 	a.mut.Lock()
 	defer a.mut.Unlock()
@@ -140,4 +166,4 @@ func (a *Info) Disconnected(con net.Conn, name string) {
 			}
 		}
 	}
-}	
+}

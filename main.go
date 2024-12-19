@@ -12,7 +12,10 @@ func main() {
 	port := "8989"
 	if len(os.Args) == 2 && isValid(os.Args[1]) {
 		port = os.Args[1]
+	} else {
+		return
 	}
+	
 	ls, err := net.Listen("tcp", ":"+port)
 	if err != nil {
 		fmt.Println("Error starting server:", err)
